@@ -1,41 +1,43 @@
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.exceptions import NotFound
-from .models import Livro
-from .serializers import LivroSerializer
+from rest_framework import generics
+from django_filters import rest_framework as filters
+from .models import Livro, Categoria, Autor
+from .serializers import LivroSerializer, CategoriaSerializer, AutorSerializer
 
-@api_view(['GET', 'POST'])
-def livro_list_create(request):
-    if request.method == 'GET':
-        livros = Livro.objects.all()
-        serializer = LivroSerializer(livros, many=True)
-        return Response(serializer.data)
+class LivroFilter(filters.FilterSet):
+    titulo = filters.CharFilter(lookup_expr='icontains')
+    autor = filters.CharFilter(field_name='autor__nome', lookup_expr='icontains')
+    categoria = filters.AllValuesFilter(field_name='categoria__nome')
 
-    if request.method == 'POST':
-        serializer = LivroSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    class Meta:
+        model = Livro
+        fields = ['titulo', 'autor', 'categoria']
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def livro_detail(request, pk):
-    livro = Livro.objects.filter(pk=pk).first()
-    if livro is None:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class LivroList(generics.ListCreateAPIView):
+    queryset = Livro.objects.all()
+    serializer_class = LivroSerializer
+    filterset_class = LivroFilter
+    ordering_fields = ['titulo', 'autor', 'categoria', 'publicado_em']  
+    search_fields = ['titulo', 'autor__nome', 'categoria__nome']  
 
-    if request.method == 'GET':
-        serializer = LivroSerializer(livro)
-        return Response(serializer.data)
+class LivroDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Livro.objects.all()
+    serializer_class = LivroSerializer
 
-    if request.method == 'PUT':
-        serializer = LivroSerializer(livro, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class CategoriaList(generics.ListCreateAPIView):
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+    filterset_fields = ['nome'] 
+    ordering_fields = ['nome']  
 
-    if request.method == 'DELETE':
-        livro.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class CategoriaDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+
+class AutorList(generics.ListCreateAPIView):
+    queryset = Autor.objects.all()
+    serializer_class = AutorSerializer
+    ordering_fields = ['nome']  
+
+class AutorDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Autor.objects.all()
+    serializer_class = AutorSerializer
